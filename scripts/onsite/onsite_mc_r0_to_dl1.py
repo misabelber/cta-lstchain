@@ -14,7 +14,7 @@ from lstchain.io.data_management import *
 
  
 
-parser = argparse.ArgumentParser(description="R0 to DL1")
+parser = argparse.ArgumentParser(description="MC R0 to DL1")
 
 
 parser.add_argument('input_dir', type=str,
@@ -26,20 +26,6 @@ parser.add_argument('--config_file', '-conf', action='store', type=str,
                     help='Path to a configuration file. If none is given, a standard configuration is applied',
                     default=None
                     )
-
-## Foreseen for Real Data
-
-# parser.add_argument('--pedestal_path', '-pedestal', action='store', type=str,
-#                     dest='pedestal_path',
-#                     help='Path to a pedestal file',
-#                     default=None
-#                     )
-#
-# parser.add_argument('--calibration_path', '-calib', action='store', type=str,
-#                     dest='calibration_path',
-#                     help='Path to a calibration file',
-#                     default=None
-#                     )
 
 parser.add_argument('--train_test_ratio', '-ratio', action='store', type=str,
                     dest='train_test_ratio',
