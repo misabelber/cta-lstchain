@@ -34,8 +34,7 @@ args = parser.parse_args()
 source_env = 'source /local/home/lstanalyzer/.bashrc; conda activate cta;'
 
 
-if __name__ == '__main__':
-
+def main():
     print("\n ==== START {} ==== \n".format(sys.argv[0]))
 
     dl1_gamma_dir = os.path.dirname(os.path.abspath(args.gamma_dl1_training_file))
@@ -50,10 +49,10 @@ if __name__ == '__main__':
 
     base_cmd = ''
     base_cmd += source_env
-    base_cmd += 'lstchain_mc_trainpipe.py -fg {} -fp {} -o {}'.format(os.path.abspath(args.gamma_dl1_training_file),
-                                                                      os.path.abspath(args.proton_dl1_training_file),
-                                                                      models_dir,
-                                                                      )
+    base_cmd += 'lstchain_mc_trainpipe -fg {} -fp {} -o {}'.format(os.path.abspath(args.gamma_dl1_training_file),
+                                                                   os.path.abspath(args.proton_dl1_training_file),
+                                                                   models_dir,
+                                                                   )
     if args.config_file is not None:
         base_cmd = base_cmd + ' -conf {}'.format(args.config_file)
 
@@ -72,3 +71,7 @@ if __name__ == '__main__':
         shutil.copy(args.config_file, os.path.join(models_dir, os.path.basename(args.config_file)))
 
     print("\n ==== END {} ==== \n".format(sys.argv[0]))
+
+
+if __name__ == '__main__':
+    main()
