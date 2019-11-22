@@ -153,7 +153,7 @@ if __name__ == '__main__':
             jobo = os.path.join(JOB_LOGS, "job{}.o".format(counter))
             jobe = os.path.join(JOB_LOGS, "job{}.e".format(counter))
             cc = ' -conf {}'.format(args.config_file) if args.config_file is not None else ' '
-            base_cmd = 'core_list.sh "lstchain_mc_r0_to_dl1.py -o {} {}"'.format(output_dir, cc)
+            base_cmd = 'core_list.sh "lstchain_mc_r0_to_dl1 -o {} {}"'.format(output_dir, cc)
             cmd = 'sbatch -e {} -o {} {} {}'.format(jobe, jobo, base_cmd, os.path.join(dir_lists, file))
 
             os.system(cmd)
