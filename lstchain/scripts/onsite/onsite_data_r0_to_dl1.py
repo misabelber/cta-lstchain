@@ -27,19 +27,19 @@ parser.add_argument('--config_file', '-conf', action='store', type=str,
 # For Real Data:
 
 parser.add_argument('--pedestal_path', '-pedestal', action='store', type=str,
-                    dest='pedestal_path',
+                    dest='pedestal',
                     help='Path to a pedestal file. Required only for real data analysis.',
                     default=None
                     )
 
 parser.add_argument('--calibration_path', '-calib', action='store', type=str,
-                    dest='calibration_path',
+                    dest='calib',
                     help='Path to a calibration file. Required only for real data analysis.',
                     default=None
                     )
 
 parser.add_argument('--pointing_file_path', '-pointing', action='store', type=str,
-                    dest='pointing_file_path',
+                    dest='pointing',
                     help='path to the pointing file from drive. Required only for real data analysis',
                     default=None,
                     )
