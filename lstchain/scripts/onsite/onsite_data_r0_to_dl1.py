@@ -121,8 +121,8 @@ def main():
         jobo = os.path.join(JOB_LOGS, "job{}.o".format(counter))
         jobe = os.path.join(JOB_LOGS, "job{}.e".format(counter))
         cc = ' -conf {}'.format(args.config_file) if args.config_file is not None else ' '
-        base_cmd = f'"lstchain_data_r0_to_dl1 -f {file} -o {output_dir} -pedestal {args.pedestal} -calib {args.calib}"'\
-            f'-pointing {args.pointing} {cc}'
+        base_cmd = f'"lstchain_data_r0_to_dl1 -f {file} -o {output_dir} -pedestal {args.pedestal} -calib {args.calib} ' \
+            f'-pointing {args.pointing} {cc}"'
         cmd = 'sbatch -e {} -o {} --wrap {}'.format(jobe, jobo, base_cmd)
         # os.system(cmd)
         print(cmd)
