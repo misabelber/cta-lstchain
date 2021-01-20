@@ -50,6 +50,9 @@ parser.add_argument('--input-file-proton-dl2', '--pdl2', type = str,
 parser.add_argument('--input-file-on-dl2', '--ondl2', type = str,
                     dest = 'dl2_file_on',
                     help = 'path to reconstructed ON dl2 file')
+parser.add_argument('--input-file-off-dl2', '--offdl2', type = str,
+                    dest = 'dl2_file_off',
+                    help = 'path to reconstructed OFF dl2 file')
 parser.add_argument('--output_path', '--o', type = str,
                     dest = 'output_path',
                     help = 'path where to save plot images')
@@ -69,8 +72,8 @@ def main():
 
 
     # Calculate the sensitivity
-    '''
-    energy,sensitivity,result,events, gcut, tcut = sensitivity_gamma_efficiency(args.dl2_file_g,
+
+    mc_energy,mc_sensitivity,mc_result,mc_events, gcut, tcut = sensitivity_gamma_efficiency(args.dl2_file_g,
                                                                                          args.dl2_file_p,
                                                                                          ntelescopes_gamma,
                                                                                          ntelescopes_protons,
@@ -81,8 +84,8 @@ def main():
                                                                                          obstime)
 
 
-    '''
 
+    '''
     mc_energy,mc_sensitivity,mc_result,mc_events, gcut, tcut = sensitivity_gamma_efficiency_real_protons(args.dl2_file_g,
                                                                                              args.dl2_file_p,
                                                                                              ntelescopes_gamma,
@@ -91,16 +94,18 @@ def main():
                                                                                              geff_theta2,
                                                                                              noff,
                                                                                              obstime)
-
+    '''
     # Saves the results
- #   mc_events.to_hdf(args.output_path+'/mc_sensitivity.h5', key='data', mode='w')
+    if not os.path.exists(args.output_path):
+        os.makedirs(args.output_path)
+
     mc_result.to_hdf(args.output_path+'/mc_sensitivity.h5', key='results')
 
     print("\nOptimal gammaness cuts:", gcut)
     print("Optimal theta2 cuts: {} \n".format(tcut))
 
     energy,sensitivity,result,events, gcut, tcut=sensitivity_gamma_efficiency_real_data(args.dl2_file_on,
-                                                                                        args.dl2_file_p,
+                                                                                        args.dl2_file_off,
                                                                                         gcut,
                                                                                         tcut,
                                                                                         n_bins_energy,
@@ -115,11 +120,9 @@ def main():
     #events[events.mc_type==0].alt_tel = events[events.mc_type==0].mc_alt
     #events[events.mc_type==0].az_tel = events[events.mc_type==0].mc_az
 
-    if not os.path.exists(args.output_path):
-        os.makedirs(args.output_path)
+
 
     # Saves the results
-#    events.to_hdf(args.output_path+'/sensitivity.h5', key='data', mode='w')
     result.to_hdf(args.output_path+'/sensitivity.h5', key='results')
 
     # Plots
@@ -133,7 +136,7 @@ def main():
     plot_utils.plot_Crab_SED(ax, 10, 50, 5e4, linestyle='--', label="10% Crab") #Energy in GeV
     plot_utils.plot_Crab_SED(ax, 1, 50, 5e4, linestyle=':', label="1% Crab") #Energy in GeV
     plot_utils.plot_sensitivity(energy, sensitivity, ax, color='orange', label="Sensitivity real data")
-    plot_utils.plot_sensitivity(energy, mc_sensitivity, ax, color='green', label="Sensitivity MC gammas")
+    plot_utils.plot_sensitivity(energy, mc_sensitivity, ax, color='green', label="Sensitivity MC")
     plt.legend(prop={'size': 12})
     plt.savefig(args.output_path+"/sensitivity.png")
     plt.show()
