@@ -66,7 +66,7 @@ def main():
     n_bins_energy = 20  #  Number of energy bins
     obstime = 50 * 3600 * u.s
     noff = 5
-    geff_gammaness = 0.8 #Gamma efficincy of gammaness cut
+    geff_gammaness = 0.9 #Gamma efficincy of gammaness cut
     geff_theta2 = 0.68
     #Gamma efficiency of theta2 cut
 
