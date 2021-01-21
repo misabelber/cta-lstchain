@@ -595,7 +595,7 @@ def sensitivity_gamma_efficiency(dl2_file_g, dl2_file_p,
                       * w_p
 
     #For background, select protons contained in a ring overlapping with the ON region
-    p_contained, ang_area_p = ring_containment(angdist2_p, 1.0 * u.deg, 0.9 * u.deg)
+    p_contained, ang_area_p = ring_containment(angdist2_p, 0.5 * u.deg, 0.5 * u.deg)
     # FIX: ring_radius and ring_halfwidth should have units of deg
     # FIX: hardcoded at the moment, but ring_radius should be read from
     # the gamma file (point-like) or given as input (diffuse).
@@ -645,11 +645,17 @@ def sensitivity_gamma_efficiency(dl2_file_g, dl2_file_p,
         events_bin_g = events_g[(e_reco_g < energy[i+1]) & (e_reco_g > energy[i])]
         events_bin_p = events_p[(e_reco_p < energy[i+1]) & (e_reco_p > energy[i])]
 
-        best_g_cut = find_cut(events_bin_g, rates_g, obstime,  "gammaness", 0.1, 1.0, gamma_eff_gammaness)
-        best_theta2_cut = find_cut(events_bin_g, rates_g, obstime, "theta2", 0.0, 10.0, gamma_eff_theta2) * u.deg**2
+        best_g_cut = find_cut(events_bin_g, rates_g, obstime,  "gammaness", 0.0, 1.0, gamma_eff_gammaness)
+
+        events_g_after_g_cut=events_bin_g[events_bin_g.gammaness > best_g_cut]
+        rates_g_after_g_cut=rates_g[events_bin_g.gammaness > best_g_cut]
+
+        best_theta2_cut = find_cut(events_g_after_g_cut, rates_g_after_g_cut, obstime, "theta2", 0.0, .5, gamma_eff_theta2) * u.deg**2
 
         events_bin_after_cuts_g = events_bin_g[(events_bin_g.gammaness > best_g_cut) &(events_bin_g.theta2 < best_theta2_cut)]
-        events_bin_after_cuts_p = events_bin_p[(events_bin_p.gammaness > best_g_cut) &(events_bin_p.theta2 < best_theta2_cut)]
+
+        events_bin_after_cuts_p = events_p[(e_reco_p < energy[i+1]) & (e_reco_p > energy[i]) & \
+                                           (gammaness_p > best_g_cut) & p_contained]
 
         #Save the survived events in the dataframe
         gammalike_events = pd.concat((gammalike_events, events_bin_after_cuts_g))

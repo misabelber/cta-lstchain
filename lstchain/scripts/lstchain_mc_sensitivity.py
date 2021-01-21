@@ -66,7 +66,7 @@ def main():
     n_bins_energy = 20  #  Number of energy bins
     obstime = 50 * 3600 * u.s
     noff = 5
-    geff_gammaness = 0.9 #Gamma efficincy of gammaness cut
+    geff_gammaness = 0.8 #Gamma efficincy of gammaness cut
     geff_theta2 = 0.68
     #Gamma efficiency of theta2 cut
 
@@ -85,21 +85,22 @@ def main():
 
 
 
-    '''
-    mc_energy,mc_sensitivity,mc_result,mc_events, gcut, tcut = sensitivity_gamma_efficiency_real_protons(args.dl2_file_g,
-                                                                                             args.dl2_file_p,
+    
+    off_energy,off_sensitivity,off_result,off_events, gcut, tcut = sensitivity_gamma_efficiency_real_protons(args.dl2_file_g,
+                                                                                             args.dl2_file_off,
                                                                                              ntelescopes_gamma,
                                                                                              n_bins_energy,
                                                                                              geff_gammaness,
                                                                                              geff_theta2,
                                                                                              noff,
                                                                                              obstime)
-    '''
+    
     # Saves the results
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path)
 
     mc_result.to_hdf(args.output_path+'/mc_sensitivity.h5', key='results')
+    off_result.to_hdf(args.output_path+'/off_sensitivity.h5', key='results')
 
     print("\nOptimal gammaness cuts:", gcut)
     print("Optimal theta2 cuts: {} \n".format(tcut))
@@ -137,6 +138,7 @@ def main():
     plot_utils.plot_Crab_SED(ax, 1, 50, 5e4, linestyle=':', label="1% Crab") #Energy in GeV
     plot_utils.plot_sensitivity(energy, sensitivity, ax, color='orange', label="Sensitivity real data")
     plot_utils.plot_sensitivity(energy, mc_sensitivity, ax, color='green', label="Sensitivity MC")
+    plot_utils.plot_sensitivity(energy, off_sensitivity, ax, color='cyan', label="Sensitivity real protons")
     plt.legend(prop={'size': 12})
     plt.savefig(args.output_path+"/sensitivity.png")
     plt.show()
