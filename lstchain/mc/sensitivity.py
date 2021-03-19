@@ -151,41 +151,6 @@ def process_real(dl2_file):
 
     return gammaness, angdist2.to(u.deg**2),e_reco, events, obstime_real
 
-<<<<<<< HEAD
-def get_obstime_real(events):
-    """
-    Calculate the effective observation time of a set
-    of real data events.
-    Parameters
-    ----------
-    events: pandas DataFrame of dl2 events
-
-    Returns
-    -------
-    t_eff: float
-    t_elapsed: float
-    """
-    if 'delta_t' in events.columns:
-
-        delta_t = events.delta_t[1:]
-        delta_t = delta_t[(delta_t > 0) & (delta_t < 0.002)]
-        rate=1/np.mean(delta_t)
-        dead_time = np.amin(delta_t)
-        t_elapsed = len(events)/rate * u.s
-        t_eff = t_elapsed/(1+rate*dead_time)
-
-        print("ELAPSED TIME: %.2f s\n" % t_elapsed.to_value(),
-              "EFFECTIVE TIME: %.2f s\n" % t_eff.to_value(),
-              "DEAD TIME: %f s\n" % dead_time,
-              "RATE: %.2f 1/s\n" % rate
-        )
-
-        return t_eff
-    else:
-        return -1 * u.s
-
-=======
->>>>>>> upstream/master
 def get_weights(mc_par, spectral_par):
     """
     Calculate the weight to transform from MC spectra to target spectra
