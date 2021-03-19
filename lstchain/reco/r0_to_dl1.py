@@ -20,6 +20,7 @@ from ctapipe.image import (
     HillasParameterizationError,
     hillas_parameters,
     tailcuts_clean,
+    apply_time_delta_cleaning,
 )
 from ctapipe.image.morphology import number_of_islands
 from ctapipe.instrument import OpticsDescription
@@ -41,6 +42,7 @@ from ..io import (
     DL1ParametersContainer,
     replace_config,
     standard_config,
+    HDF5_ZSTD_FILTERS,
 )
 from ..io import (
     add_global_metadata,
@@ -71,12 +73,6 @@ __all__ = [
 cleaning_method = tailcuts_clean
 
 
-filters = tables.Filters(
-    complevel=5,            # enable compression, with level 0=disabled, 9=max
-    complib='blosc:zstd',   # compression using blosc
-    fletcher32=True,        # attach a checksum to each chunk for error correction
-    bitshuffle=False,       # for BLOSC, shuffle bits for better compression
-)
 
 
 def get_dl1(
@@ -85,7 +81,6 @@ def get_dl1(
         telescope_id,
         dl1_container=None,
         custom_config={},
-        use_main_island=True,
 ):
     """
     Return a DL1ParametersContainer of extracted features from a calibrated event.
@@ -101,8 +96,6 @@ def get_dl1(
     custom_config: path to a configuration file
         configuration used for tailcut cleaning
         superseeds the standard configuration
-    use_main_island: `bool` Use only the main island
-        to calculate DL1 parameters
 
     Returns
     -------
@@ -111,7 +104,21 @@ def get_dl1(
 
     config = replace_config(standard_config, custom_config)
     cleaning_parameters = config["tailcut"]
+    cleaning_parameters_for_tailcuts = cleaning_parameters.copy()
+    use_main_island = True
+    if "use_only_main_island" in cleaning_parameters.keys():
+        use_main_island = cleaning_parameters["use_only_main_island"]
 
+    # time constraint for image cleaning: require at least one neighbor
+    # within delta_time:
+    delta_time = None
+    if "delta_time" in cleaning_parameters:
+        delta_time = cleaning_parameters["delta_time"]
+
+    # we use pop because ctapipe won't recognize that keyword in tailcuts
+    cleaning_parameters_for_tailcuts.pop("delta_time")
+    cleaning_parameters_for_tailcuts.pop("use_only_main_island")
+    
     dl1_container = DL1ParametersContainer() if dl1_container is None else dl1_container
 
     dl1 = calibrated_event.dl1.tel[telescope_id]
@@ -121,7 +128,7 @@ def get_dl1(
     image = dl1.image
     peak_time = dl1.peak_time
 
-    signal_pixels = cleaning_method(camera_geometry, image, **cleaning_parameters)
+    signal_pixels = cleaning_method(camera_geometry, image, **cleaning_parameters_for_tailcuts)
     n_pixels = np.count_nonzero(signal_pixels)
 
     if n_pixels > 0:
@@ -129,40 +136,52 @@ def get_dl1(
         num_islands, island_labels = number_of_islands(camera_geometry, signal_pixels)
 
         if use_main_island:
-            n_pixels_on_island = np.bincount(island_labels.astype(np.int))
+            n_pixels_on_island = np.bincount(island_labels)
             n_pixels_on_island[0] = 0  # first island is no-island and should not be considered
             max_island_label = np.argmax(n_pixels_on_island)
             signal_pixels[island_labels != max_island_label] = False
 
-        hillas = hillas_parameters(camera_geometry[signal_pixels], image[signal_pixels])
+        if delta_time is not None:
+            cleaned_pixel_times = peak_time
+            # makes sure only signal pixels are used in the time
+            # check:
+            cleaned_pixel_times[~signal_pixels] = np.nan
 
-        # Fill container
-        dl1_container.fill_hillas(hillas)
+            new_mask = apply_time_delta_cleaning(camera_geometry,
+                                                 signal_pixels,
+                                                 cleaned_pixel_times, 1, delta_time)
+            signal_pixels = new_mask
 
-        # convert ctapipe's width and length (in m) to deg:
-        foclen = subarray.tel[telescope_id].optics.equivalent_focal_length
-        width = np.rad2deg(np.arctan2(dl1_container.width, foclen))
-        length = np.rad2deg(np.arctan2(dl1_container.length, foclen))
-        dl1_container.width = width
-        dl1_container.length = length
-        dl1_container.wl = dl1_container.width / dl1_container.length
+        # count surviving pixels
+        n_pixels = np.count_nonzero(signal_pixels)
 
-        dl1_container.set_timing_features(camera_geometry[signal_pixels],
-                                          image[signal_pixels],
-                                          peak_time[signal_pixels],
-                                          hillas)
-        dl1_container.set_leakage(camera_geometry, image, signal_pixels)
-        dl1_container.set_concentration(camera_geometry, image, hillas)
-        dl1_container.n_pixels = n_pixels
-        dl1_container.n_islands = num_islands
-        dl1_container.set_telescope_info(subarray, telescope_id)
+        if n_pixels > 0:
+            hillas = hillas_parameters(camera_geometry[signal_pixels], image[signal_pixels])
 
-        dl1_container.log_intensity = np.log10(dl1_container.intensity)
+            # Fill container
+            dl1_container.fill_hillas(hillas)
 
-    else:
-        # We set other fields which still make sense for a non-parametrized
-        # image:
-        dl1_container.set_telescope_info(subarray, telescope_id)
+            # convert ctapipe's width and length (in m) to deg:
+            foclen = subarray.tel[telescope_id].optics.equivalent_focal_length
+            width = np.rad2deg(np.arctan2(dl1_container.width, foclen))
+            length = np.rad2deg(np.arctan2(dl1_container.length, foclen))
+            dl1_container.width = width
+            dl1_container.length = length
+            dl1_container.wl = dl1_container.width / dl1_container.length
+
+            dl1_container.set_timing_features(camera_geometry[signal_pixels],
+                                              image[signal_pixels],
+                                              peak_time[signal_pixels],
+                                              hillas)
+            dl1_container.set_leakage(camera_geometry, image, signal_pixels)
+            dl1_container.set_concentration(camera_geometry, image, hillas)
+            dl1_container.n_pixels = n_pixels
+            dl1_container.n_islands = num_islands
+            dl1_container.log_intensity = np.log10(dl1_container.intensity)
+
+    # We set other fields which still make sense for a non-parametrized
+    # image:
+    dl1_container.set_telescope_info(subarray, telescope_id)
 
     return dl1_container
 
@@ -261,7 +280,7 @@ def r0_to_dl1(
             source.simulation_config,
             output_filename,
             obs_id=source.obs_ids[0],
-            filters=filters,
+            filters=HDF5_ZSTD_FILTERS,
             metadata=metadata,
         )
 
@@ -269,7 +288,7 @@ def r0_to_dl1(
         filename=output_filename,
         group_name='dl1/event',
         mode='a',
-        filters=filters,
+        filters=HDF5_ZSTD_FILTERS,
         add_prefix=True,
         # overwrite=True,
     ) as writer:
@@ -296,7 +315,7 @@ def r0_to_dl1(
 
         # Forcing filters for the dl1 dataset that are currently read from the pre-existing files
         # This should be fixed in ctapipe and then corrected here
-        writer._h5file.filters = filters
+        writer._h5file.filters = HDF5_ZSTD_FILTERS
         logger.info(f"USING FILTERS: {writer._h5file.filters}")
 
         for i, event in enumerate(source):
@@ -397,7 +416,6 @@ def r0_to_dl1(
                         telescope_id,
                         dl1_container=dl1_container,
                         custom_config=config,
-                        use_main_island=True,
                     )
 
                 except HillasParameterizationError:
@@ -565,10 +583,6 @@ def r0_to_dl1(
         muon_output_filename = Path(dir, name)
         table = Table(muon_parameters)
         table.write(muon_output_filename, format='fits', overwrite=True)
-
-        # Produce the dl1 datacheck .h5 file:
-        check_dl1(output_filename, Path(output_filename).parent,
-                  max_cores=1, create_pdf=False)
 
 
 def add_disp_to_parameters_table(dl1_file, table_path, focal):
