@@ -20,7 +20,6 @@ from . import disp
 from ..io import standard_config, replace_config
 import astropy.units as u
 from ..io.io import dl1_params_lstcam_key, dl1_params_src_dep_lstcam_key
-from ctapipe.instrument import OpticsDescription
 from ctapipe.image.hillas import camera_to_shower_coordinates
 
 
@@ -374,7 +373,7 @@ def build_models(filegammas, fileprotons,
     return reg_energy, reg_disp_vector, cls_gh
 
 
-def apply_models(dl1, classifier, reg_energy, reg_disp_vector, custom_config={}):
+def apply_models(dl1, classifier, reg_energy, reg_disp_vector, focal_length=28*u.m, custom_config={}):
     """Apply previously trained Random Forests to a set of data
     depending on a set of features.
 
@@ -396,11 +395,14 @@ def apply_models(dl1, classifier, reg_energy, reg_disp_vector, custom_config={})
     """
 
     config = replace_config(standard_config, custom_config)
-
-    dl2 = dl1.copy()
-
     regression_features = config["regression_features"]
     classification_features = config["classification_features"]
+    events_filters = config["events_filters"]
+
+    dl2 = utils.filter_events(dl1,
+                              filters=events_filters,
+                              finite_params=config['regression_features'] + config['classification_features'],
+                              )
       
     #Reconstruction of Energy and disp_norm distance
     dl2['log_reco_energy'] = reg_energy.predict(dl2[regression_features])
@@ -417,7 +419,6 @@ def apply_models(dl1, classifier, reg_energy, reg_disp_vector, custom_config={})
                                                             dl2.y,
                                                             )
 
-    focal_length = OpticsDescription.from_name('LST').equivalent_focal_length
     if 'mc_alt_tel' in dl2.columns:
         alt_tel = dl2['mc_alt_tel'].values
         az_tel = dl2['mc_az_tel'].values
@@ -458,7 +459,7 @@ def apply_models(dl1, classifier, reg_energy, reg_disp_vector, custom_config={})
 
 
 
-def get_source_dependent_parameters(data, config):
+def get_source_dependent_parameters(data, config, focal_length=28*u.m):
 
     """Get parameters dict for source-dependent analysis .
 
@@ -479,7 +480,7 @@ def get_source_dependent_parameters(data, config):
     else:
         data_type = 'real_data'
     
-    expected_src_pos_x_m, expected_src_pos_y_m = get_expected_source_pos(data, data_type, config)
+    expected_src_pos_x_m, expected_src_pos_y_m = get_expected_source_pos(data, data_type, config, focal_length=focal_length)
 
     # ON position
     src_dep_params_dict = {}
@@ -531,7 +532,7 @@ def calc_source_dependent_parameters(data, expected_src_pos_x_m, expected_src_po
     return src_dep_params
 
 
-def get_expected_source_pos(data, data_type, config):
+def get_expected_source_pos(data, data_type, config, focal_length=28*u.m):
 
     """Get expected source position for source-dependent analysis .
 
@@ -550,7 +551,6 @@ def get_expected_source_pos(data, data_type, config):
 
     #For proton MC, nominal source position is one written in config file
     if data_type == 'mc_proton':
-        focal_length = OpticsDescription.from_name('LST').equivalent_focal_length
         expected_src_pos = utils.sky_to_camera(
             u.Quantity(data['mc_alt_tel'].values + config['mc_nominal_source_x_deg'], u.deg, copy=False),
             u.Quantity(data['mc_az_tel'].values + config['mc_nominal_source_y_deg'], u.deg, copy=False),
@@ -573,16 +573,14 @@ def get_expected_source_pos(data, data_type, config):
         if config.get('observation_mode') == 'wobble':
 
             if 'source_name' in config:
-                source_coord  = SkyCoord.from_name(config.get('source_name'))
+                source_coord = SkyCoord.from_name(config.get('source_name'))
             else:
-                source_coord  = SkyCoord(config.get('source_ra'), config.get('source_dec'), frame="icrs", unit="deg")
-     
-            focal_length = OpticsDescription.from_name('LST').equivalent_focal_length
+                source_coord = SkyCoord(config.get('source_ra'), config.get('source_dec'), frame="icrs", unit="deg")
             
             time = data['dragon_time']
             obstime = Time(time, scale='utc', format='unix')
             pointing_alt = u.Quantity(data['alt_tel'], u.rad, copy=False)
-            pointing_az  = u.Quantity(data['az_tel'],  u.rad, copy=False)
+            pointing_az = u.Quantity(data['az_tel'],  u.rad, copy=False)
             source_pos = utils.radec_to_camera(source_coord, obstime, pointing_alt, pointing_az, focal_length)
 
             expected_src_pos_x_m = source_pos.x.to_value(u.m)
