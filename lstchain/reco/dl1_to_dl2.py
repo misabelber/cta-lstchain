@@ -586,4 +586,3 @@ def get_expected_source_pos(data, data_type, config, focal_length=28*u.m):
             expected_src_pos_y_m = source_pos.y.to_value(u.m)
 
     return expected_src_pos_x_m, expected_src_pos_y_m
->>>>>>> a8d06f9cf9bfa08771efb5c7001a51cd990eaa7f
