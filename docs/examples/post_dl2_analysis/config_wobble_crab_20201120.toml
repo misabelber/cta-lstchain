@@ -1,0 +1,30 @@
+[input]
+data_tag = 'v0.7.1/tailcut63'
+observed_source = 'Crab'
+columns_to_read = ['alt_tel', 'az_tel', 'dragon_time', 'gammaness', 'intensity', 'leakage_intensity_width_2', 'n_pixels', 'reco_src_x', 'reco_src_y', 'wl']
+
+[output]
+interactive = true
+directory = '/tmp'
+
+[preselection]
+intensity = [100, 1000000]
+leakage_intensity_width_2 = [0.0, 0.1]
+wl = [0.0, 1.0]    # 0.01
+gammaness = [0.8, 1.0]
+n_pixels = [0, 1800]    # 1800
+
+[analysis]
+type = 'wobble'
+#runs = [2965, 2966, 2967, 2968, 2969, 2979, 2971, 2972, 2973, 2974, 2975, 2976, 2977]   # runs to be analysed
+runs = [2965, 2966]   # runs to be analysed
+[analysis.parameters]
+n_points = 4
+[analysis.selection]
+theta2 =  [0.1, 1.5, 2.0] # cut, normalization range min, normalization range max
+
+[plot_style]
+[plot_style.figure]
+figsize = 12
+[plot_style.font]
+size = 20
